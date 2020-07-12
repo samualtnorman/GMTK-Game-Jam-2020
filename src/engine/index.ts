@@ -25,8 +25,9 @@ MbX+EPmqY6kAAAAASUVORK5CYII=")
 
 const sprites: Sprite[] = []
 export const canvas = document.createElement("canvas")
-const context = canvas.getContext("2d")
+export const context = canvas.getContext("2d")
 let scale = 1
+export const offset = { x: 0, y: 0 }
 
 export class Sprite {
 	x: number
@@ -40,8 +41,10 @@ export class Sprite {
 	onCursorEnter?: SpriteMouseEventHandler
 	onCursorLeave?: SpriteMouseEventHandler
 	scripts: Generator[]
-	sheetScale?: number
+	width?: number
+	height?: number
 	index: number
+	processes: Generator[]
 
 	constructor({
 		x = 0,
@@ -55,8 +58,10 @@ export class Sprite {
 		onCursorMove,
 		onCursorUp,
 		scripts = [],
-		sheetScale,
-		index = 0
+		width,
+		index = 0,
+		processes = [],
+		height
 	}: Partial<Sprite> = {}) {
 		this.x = x
 		this.y = y
@@ -69,8 +74,10 @@ export class Sprite {
 		this.onCursorMove = onCursorMove
 		this.onCursorUp = onCursorUp
 		this.scripts = scripts
-		this.sheetScale = sheetScale
+		this.width = width
 		this.index = index
+		this.processes = processes
+		this.height = height
 
 		sprites.push(this)
 	}
@@ -248,30 +255,45 @@ function onResize() {
 requestAnimationFrame(main)
 
 function main() {
+	if (!context)
+		throw new Error("no context :(")
+
 	requestAnimationFrame(main)
 
-	context && context.clearRect(0, 0, canvas.width, canvas.height)
+	context.clearRect(0, 0, canvas.width, canvas.height)
 	sprites.sort((a, b) => a.layer - b.layer)
 
 	for (const sprite of sprites) {
 		sprite.scripts.length && sprite.scripts[0].next().done &&
 			sprite.scripts.shift()
 
-		if (!sprite.hidden && context) {
-			if (sprite.sheetScale)
+		const postprocFinished: number[] = []
+
+		for (let i = 0; i < sprite.processes.length; i++)
+			sprite.processes[i].next().done &&
+				postprocFinished.push(i)
+
+		for (const animationDone of postprocFinished.reverse())
+			sprite.processes.splice(animationDone, 1)
+
+		if (!sprite.hidden) {
+			const width = sprite.width || sprite.height
+			const height = sprite.height || sprite.width
+
+			if (width && height)
 				context.drawImage(
 					sprite.texture,
-					Math.floor(sprite.index % (sprite.texture.width / sprite.sheetScale)) * sprite.sheetScale,
-					Math.floor(sprite.index / (sprite.texture.width / sprite.sheetScale)) * sprite.sheetScale,
-					sprite.sheetScale,
-					sprite.sheetScale,
-					sprite.x,
-					sprite.y,
-					sprite.sheetScale,
-					sprite.sheetScale
+					Math.floor(sprite.index % (sprite.texture.width / width)) * width,
+					Math.floor(sprite.index / (sprite.texture.width / width)) * height,
+					width,
+					height,
+					sprite.x + offset.x,
+					sprite.y + offset.y,
+					width,
+					height
 				)
 			else
-				context.drawImage(sprite.texture, sprite.x, sprite.y)
+				context.drawImage(sprite.texture, sprite.x + offset.x, sprite.y + offset.y)
 		}
 	}
 }

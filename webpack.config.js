@@ -11,12 +11,16 @@ module.exports = {
 				// exclude: "/node_modules/"
 			},
 			{
-				test: /\.(png|mp3)$/,
+				test: /\.(png|mp3|m4a)$/,
 				use: [ "file-loader" ],
 			},
 			{
 				test: /\.css$/,
 				use: [ "style-loader", "css-loader" ]
+			},
+			{
+				test: /\.txt$/i,
+				use: 'raw-loader',
 			}
 		]
 	},
