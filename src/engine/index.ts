@@ -10,12 +10,15 @@ interface SpriteMouseEvent {
 	timeStamp: number
 }
 
+interface LooseObject<Value = any> {
+	[key: string]: Value | undefined
+}
+
 type SpriteMouseEventHandler = (event: SpriteMouseEvent) => any
 
 export class Texture extends Image {
-	constructor(src: string) {
+	constructor(public src: string) {
 		super()
-		this.src = src
 	}
 }
 
@@ -101,6 +104,102 @@ export class Sprite {
 
 	remove() {
 		sprites.splice(sprites.indexOf(this), 1)
+	}
+}
+
+export class Charset {
+	texture: Texture
+	chars: LooseObject<{ width: number, offsetY: number }> = {}
+	height: number
+	x = 0
+	y = 0
+	spaceWidth: number
+	horMargin: number
+	verMargin: number
+
+	constructor(chars: string, { spaceWidth, horMargin = 1, verMargin = 1, texture }: { spaceWidth?: number, horMargin?: number, verMargin?: number, texture: Texture }) {
+		this.texture = texture
+		this.height = 1
+		this.spaceWidth = spaceWidth ?? texture.width
+		this.horMargin = horMargin
+		this.verMargin = verMargin
+		
+		const onload = () => {
+			this.height = (texture.height + 1) / (chars.length + 1) - 1
+			const canvas = document.createElement("canvas")
+			const context = canvas.getContext("2d")
+
+			if (context) {
+				canvas.width = texture.width
+				canvas.height = texture.height
+				context.drawImage(texture, 0, 0)
+
+				this.chars.unknown = { offsetY: 0, width: texture.width }
+
+				loop:
+				for (let x = texture.width; x--;)
+					for (let y = 0; y < this.height; y++)
+						if (context.getImageData(x, y, 1, 1).data[3]) {
+							this.chars.unknown.width = x + 1
+							break loop
+						}
+				
+				for (let i = 0; i < chars.length; i++) {
+					const char = { offsetY: (this.height + 1) * (i + 1), width: texture.width }
+					this.chars[chars[i]] = char
+
+					loop:
+					for (let x = texture.width; x--;)
+						for (let y = char.offsetY; y < char.offsetY + this.height; y++)
+							if (context.getImageData(x, y, 1, 1).data[3]) {
+								char.width = x + 1
+								break loop
+							}
+				}
+			}
+		}
+
+		if (texture.complete)
+			onload()
+		else
+			texture.onload = onload
+	}
+
+	drawChar(charStr: string, startX = this.x, startY = this.y) {
+		this.x = startX
+		this.y = startY
+
+		if (!context)
+			throw new Error("no context :(")
+
+		const char = this.chars[charStr] || this.chars.unknown
+
+		if (!char)
+			return 0
+
+		context.drawImage(
+			this.texture,
+			0, char.offsetY,
+			char.width, this.height,
+			this.x, this.y,
+			char.width, this.height
+		)
+
+		this.x += char.width + this.horMargin
+	}
+
+	drawString(string: string, startX = this.x, startY = this.y) {
+		this.x = startX
+		this.y = startY
+
+		for (const charStr of string)
+			if (charStr == " ")
+				this.x += this.spaceWidth
+			else if (charStr == "\n") {
+				this.y += this.height + this.verMargin
+				this.x = startX
+			} else
+				this.drawChar(charStr)
 	}
 }
 

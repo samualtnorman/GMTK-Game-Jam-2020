@@ -1,5 +1,5 @@
 interface LooseObject<value = any> {
-	[key: string]: value
+	[key: string]: value | undefined
 }
 
 import {
@@ -19,7 +19,7 @@ import {
 	txt_spikes
 } from "./textures"
 
-import { Sprite, canvas, autoResize, skipFrames, context, offset } from "./engine/index"
+import { Sprite, canvas, autoResize, skipFrames, context, offset, Charset } from "./engine/index"
 import level from "./assets/level.txt"
 
 import src_music from "./assets/music.m4a"
@@ -61,61 +61,39 @@ class Robot extends Sprite {
 }
 
 class Terminal extends Sprite {
-	hidden = true
-	scripts = [
-		this.drawTerminalContents()
-	]
-	layer = 4;
+	* main() {
+		while (1) {
+			if (context && this.open) {
+				if (--this.cursorTimeout == -40)
+					this.cursorTimeout = 60
 
-	* drawTerminalContents() {
-		if (context && this.open) {
-			context.beginPath()
-			context.fillStyle = "black"
-			context.fillRect(this.x, this.y, canvas.width, canvas.height)
-			
-			this.drawChars(this.cmdLine, ...this.drawChars(this.contents))
+				context.beginPath()
+				context.fillStyle = "black"
+				context.fillRect(this.x, this.y, canvas.width, canvas.height)
+				charset.drawString(this.contents, 1, 1)
+				charset.drawString(this.cmdLine)
+
+				if (this.cursorTimeout > 0) {
+					context.beginPath()
+					context.fillStyle = "white"
+					context.fillRect(charset.x, charset.y - 1, 1, charset.height + 1)
+				}
+			}
+
+			yield
 		}
-
-		this.scripts.push(this.drawTerminalContents())
 	}
 
-	drawChar(charStr: string, x = 1, y = 1) {
-		if (!context)
-			throw new Error("no context :(")
-
-		const char = charset[charStr] || charset.unknown
-
-		context.drawImage(
-			txt_charset,
-			char.startX,
-			0,
-			char.width,
-			10,
-			x,
-			y,
-			char.width,
-			10
-		)
-
-		return char.width
-	}
-
-	drawChars(string: string, x = 1, y = 1) {
-		for (const charStr of string)
-			if (charStr == " ")
-				x += 5
-			else if (charStr == "\n") {
-				y += 11
-				x = 1
-			} else
-				x += this.drawChar(charStr, x, y) + 1
-
-		return [ x, y ]
-	}
-
+	hidden = true
+	layer = 4
 	contents = "Enter \"help\" for help\n> "
 	open = false
 	cmdLine = ""
+	cursorTimeout = 60
+
+	processes = [
+		this.main()
+	]
 }
 
 class KeyDoor extends Sprite {
@@ -166,122 +144,25 @@ class Pedastal extends Sprite {
 	}
 }
 
-const charset: LooseObject<{ width: number, startX: number }> = {
-	'0': { width: 4, startX: 73 },
-	'1': { width: 2, startX: 78 },
-	'2': { width: 4, startX: 81 },
-	'3': { width: 4, startX: 86 },
-	'4': { width: 5, startX: 91 },
-	'5': { width: 4, startX: 97 },
-	'6': { width: 4, startX: 102 },
-	'7': { width: 4, startX: 107 },
-	'8': { width: 4, startX: 112 },
-	'9': { width: 4, startX: 117 },
-	unknown: { width: 5, startX: 0 },
-	'!': { width: 1, startX: 6 },
-	'"': { width: 3, startX: 8 },
-	'#': { width: 5, startX: 12 },
-	$: { width: 5, startX: 18 },
-	'%': { width: 7, startX: 24 },
-	'&': { width: 5, startX: 32 },
-	"'": { width: 1, startX: 38 },
-	'(': { width: 3, startX: 40 },
-	')': { width: 3, startX: 44 },
-	'*': { width: 3, startX: 48 },
-	'+': { width: 5, startX: 52 },
-	',': { width: 2, startX: 58 },
-	'-': { width: 4, startX: 61 },
-	'.': { width: 1, startX: 66 },
-	'/': { width: 4, startX: 68 },
-	':': { width: 1, startX: 122 },
-	';': { width: 2, startX: 124 },
-	'<': { width: 3, startX: 127 },
-	'=': { width: 5, startX: 131 },
-	'>': { width: 3, startX: 137 },
-	'?': { width: 5, startX: 141 },
-	'@': { width: 6, startX: 147 },
-	A: { width: 4, startX: 154 },
-	B: { width: 4, startX: 159 },
-	C: { width: 4, startX: 164 },
-	D: { width: 4, startX: 169 },
-	E: { width: 4, startX: 174 },
-	F: { width: 4, startX: 179 },
-	G: { width: 5, startX: 184 },
-	H: { width: 4, startX: 190 },
-	I: { width: 5, startX: 195 },
-	J: { width: 6, startX: 201 },
-	K: { width: 5, startX: 208 },
-	L: { width: 4, startX: 214 },
-	M: { width: 5, startX: 219 },
-	N: { width: 5, startX: 225 },
-	O: { width: 5, startX: 231 },
-	P: { width: 4, startX: 237 },
-	Q: { width: 5, startX: 242 },
-	R: { width: 4, startX: 248 },
-	S: { width: 4, startX: 253 },
-	T: { width: 5, startX: 258 },
-	U: { width: 4, startX: 264 },
-	V: { width: 5, startX: 269 },
-	W: { width: 5, startX: 275 },
-	X: { width: 5, startX: 281 },
-	Y: { width: 5, startX: 287 },
-	Z: { width: 5, startX: 293 },
-	'[': { width: 2, startX: 299 },
-	'\\': { width: 4, startX: 302 },
-	']': { width: 2, startX: 307 },
-	'^': { width: 5, startX: 310 },
-	_: { width: 5, startX: 316 },
-	'`': { width: 2, startX: 322 },
-	a: { width: 4, startX: 330 },
-	b: { width: 4, startX: 335 },
-	c: { width: 3, startX: 340 },
-	d: { width: 4, startX: 344 },
-	e: { width: 4, startX: 349 },
-	f: { width: 3, startX: 354 },
-	g: { width: 4, startX: 358 },
-	h: { width: 4, startX: 363 },
-	i: { width: 1, startX: 368 },
-	j: { width: 4, startX: 370 },
-	k: { width: 4, startX: 375 },
-	l: { width: 2, startX: 380 },
-	m: { width: 5, startX: 383 },
-	n: { width: 4, startX: 389 },
-	o: { width: 4, startX: 394 },
-	p: { width: 4, startX: 399 },
-	q: { width: 5, startX: 404 },
-	r: { width: 3, startX: 410 },
-	s: { width: 3, startX: 414 },
-	t: { width: 3, startX: 418 },
-	u: { width: 4, startX: 422 },
-	v: { width: 5, startX: 427 },
-	w: { width: 5, startX: 433 },
-	x: { width: 5, startX: 439 },
-	y: { width: 4, startX: 445 },
-	z: { width: 3, startX: 450 },
-	'{': { width: 4, startX: 454 },
-	'|': { width: 1, startX: 459 },
-	'}': { width: 4, startX: 461 },
-	'~': { width: 70, startX: 466 }
-}
-
 let spr_robot: Robot
 const tiles: Tile[] = []
 const spr_terminal = new Terminal
 const entities: KeyDoor[] = []
+const charset = new Charset("!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", { texture: txt_charset })
 
 onerror = alert
 
 onkeyup = ({ key }) => {
 	if (key == "Escape") {
-		spr_terminal.open = !spr_terminal.open
-		spr_terminal.cmdLine = ""
+		if (spr_terminal.open = !spr_terminal.open)
+			spr_terminal.cmdLine = ""
 	}
 }
 
 onkeydown = ({ key }) => {
 	music.play()
 
-	if (spr_terminal.open)
+	if (spr_terminal.open) {
 		switch (key) {
 			case "Backspace":
 				spr_terminal.cmdLine = spr_terminal.cmdLine.substring(0, spr_terminal.cmdLine.length - 1)
@@ -293,6 +174,9 @@ onkeydown = ({ key }) => {
 			default:
 				key.length == 1 && (spr_terminal.cmdLine += key)
 		}
+
+		spr_terminal.cursorTimeout = 60
+	}
 }
 
 onmousedown = () => music.play()
@@ -373,11 +257,7 @@ function processCommand(commandLine: string): string {
 			return "pong!\n"
 		case "":
 			return ""
-		case "walk":
-			spr_robot.scripts.push(spr_robot.walk())
-			
-			return "now walking :)\n"
 		default:
-			return "out of control\n"
+			return "unknown command\n"
 	}
 }
